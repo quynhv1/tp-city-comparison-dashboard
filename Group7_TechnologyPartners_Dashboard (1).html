@@ -3,207 +3,118 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Technology & Partners — Expansion City Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-body {font-family:"Segoe UI",Arial,sans-serif;margin:0;background:#f4f6f9;color:#333;}
-header {background:#1f3a5f;color:white;padding:20px 30px;}
-h1 {margin:0;font-size:24px;}
-.container {padding:25px 30px;}
-.controls {margin-bottom:25px;}
-select {padding:8px;margin-right:10px;font-size:14px;}
-.cards {display:flex;gap:20px;flex-wrap:wrap;}
-.card {background:white;border-radius:10px;padding:20px;flex:1;min-width:320px;box-shadow:0 3px 8px rgba(0,0,0,0.1);}
-.metric {margin-bottom:15px;}
-.metric strong {display:block;color:#1f3a5f;}
-.score {font-size:20px;font-weight:bold;}
-.charts {display:grid;grid-template-columns:1fr 1fr;gap:25px;margin-top:30px;}
-.chart-box {background:white;padding:20px;border-radius:10px;box-shadow:0 3px 8px rgba(0,0,0,0.1);}
-.chart-box.full {grid-column:span 2;}
-footer {text-align:center;padding:15px;font-size:12px;color:#666;}
-</style>
-</head>
-<body>
-
-<header>
-<h1>Technology & Partners — Market Expansion Dashboard</h1>
-</header>
-
-<div class="container">
-<div class="controls">
-<label>Select City 1:</label>
-<select id="city1"></select>
-<label>Select City 2 (optional):</label>
-<select id="city2"></select>
-</div>
-
-<div class="cards">
-<div class="card" id="card1"></div>
-<div class="card" id="card2"></div>
-</div>
-
-<div class="charts">
-<div class="chart-box"><canvas id="radarChart"></canvas></div>
-<div class="chart-box"><canvas id="barChart"></canvas></div>
-<div class="chart-box full"><canvas id="pieChart"></canvas></div>
-</div>
-</div>
-
-<footer>Internal Strategy Tool — Technology & Partners</footer>
-
-<script>
-const cityData = {
-"St. Louis": {growth:[3,"Stable growth with strong healthcare and financial sectors."],competition:[3,"Moderate consulting presence; not oversaturated."],cost:[5,"Very favorable labor and office costs."],fit:[5,"Headquarters market with strong relationships."],industry:{Healthcare:30,Manufacturing:20,Financial:20,Government:15,Tech:15}},
-"Nashville": {growth:[5,"One of the fastest-growing metro economies in the U.S."],competition:[3,"Growing consulting presence but still room to enter."],cost:[3,"Costs rising due to population boom."],fit:[4,"Healthcare ecosystem aligns with firm strengths."],industry:{Healthcare:35,Tech:20,Entertainment:15,Finance:15,Other:15}},
-"Kansas City": {growth:[4,"Steady regional expansion and logistics investment."],competition:[3,"Balanced competitive environment."],cost:[4,"Affordable with strong business incentives."],fit:[4,"Similar client base to STL."],industry:{Logistics:25,Finance:25,Manufacturing:20,Tech:15,Other:15}},
-"Tulsa": {growth:[3,"Emerging growth supported by incentives and relocation programs."],competition:[2,"Low saturation."],cost:[5,"Very low operating costs."],fit:[3,"Smaller enterprise base but strong pilot-market potential."],industry:{Energy:30,Manufacturing:25,Tech:15,Healthcare:15,Other:15}},
-"Austin": {growth:[5,"Major tech hub with sustained in-migration."],competition:[5,"Highly competitive consulting landscape."],cost:[2,"Rising wages and real estate costs."],fit:[4,"Strong digital transformation demand."],industry:{Tech:45,Startups:20,Finance:15,Government:10,Other:10}},
-"Cincinnati": {growth:[3,"Stable with Fortune 500 anchors."],competition:[3,"Moderate consulting density."],cost:[4,"Manageable operating costs."],fit:[4,"Strong alignment with enterprise clients."],industry:{ConsumerGoods:35,Finance:20,Healthcare:20,Manufacturing:15,Other:10}},
-"Boston": {growth:[4,"Innovation-driven economy (biotech, education, AI)."],competition:[5,"Extremely competitive Big 4-heavy market."],cost:[1,"Very high cost of entry."],fit:[3,"Prestige market but expensive to scale."],industry:{Biotech:35,Education:25,Tech:20,Finance:15,Other:5}},
-"Phoenix": {growth:[5,"Rapid population and semiconductor investment growth."],competition:[3,"Growing but not saturated."],cost:[3,"Mid-range operating costs."],fit:[4,"Strong infrastructure and supply-chain demand."],industry:{Manufacturing:30,Tech:25,RealEstate:20,Healthcare:15,Other:10}},
-"Dallas": {growth:[5,"Major corporate relocation destination."],competition:[4,"Highly active consulting market."],cost:[3,"Costs rising but still manageable."],fit:[5,"Excellent for enterprise-scale engagements."],industry:{Finance:30,Tech:25,Energy:20,Logistics:15,Other:10}},
-"Charlotte": {growth:[4,"Banking-driven expansion."],competition:[3,"Moderate consulting presence."],cost:[3,"Balanced cost structure."],fit:[4,"Financial services alignment."],industry:{Banking:40,Tech:20,Healthcare:15,Manufacturing:15,Other:10}},
-"Atlanta": {growth:[5,"Major Southeast economic engine."],competition:[4,"Strong but not prohibitive competition."],cost:[3,"Mid-tier costs."],fit:[5,"Excellent regional hub for scaling."],industry:{Logistics:25,Media:20,Finance:20,Tech:20,Other:15}}
-};
-
-const city1Select=document.getElementById("city1");
-const city2Select=document.getElementById("city2");
-
-Object.keys(cityData).forEach(city=>{
-city1Select.add(new Option(city,city));
-city2Select.add(new Option(city,city));
-});
-
-city1Select.value="St. Louis";
-
-let radarChart,barChart,pieChart;
-
-function render(){
-const city1=city1Select.value||"St. Louis";
-const city2=city2Select.value;
-renderCard(city1,"card1");
-renderCard(city2,"card2");
-const m1=getScores(city1);
-const m2=city2?getScores(city2):null;
-updateRadar(city1,m1,city2,m2);
-updateBar(city1,m1,city2,m2);
-updatePie(city1);
-}
-
-function getScores(city){
-return[cityData[city].growth[0],cityData[city].competition[0],cityData[city].cost[0],cityData[city].fit[0]];
-}
-
-function renderCard(city,id){
-const el=document.getElementById(id);
-if(!city){el.innerHTML="";return;}
-const d=cityData[city];
-el.innerHTML=`<h2>${city}</h2>
-<div class="metric"><strong>Growth</strong><span class="score">${d.growth[0]}/5</span><div>${d.growth[1]}</div></div>
-<div class="metric"><strong>Competition</strong><span class="score">${d.competition[0]}/5</span><div>${d.competition[1]}</div></div>
-<div class="metric"><strong>Cost</strong><span class="score">${d.cost[0]}/5</span><div>${d.cost[1]}</div></div>
-<div class="metric"><strong>Strategic Fit</strong><span class="score">${d.fit[0]}/5</span><div>${d.fit[1]}</div></div>`;
-}
-
-function updateRadar(c1,m1,c2,m2){
-if(radarChart)radarChart.destroy();
-radarChart=new Chart(document.getElementById("radarChart"),{
-type:"radar",
-data:{labels:["Growth","Competition","Cost","Strategic Fit"],
-datasets:[{label:c1,data:m1},...(m2?[{label:c2,data:m2}]:[])]}
-});
-}
-
-function updateBar(c1,m1,c2,m2){
-if(barChart)barChart.destroy();
-barChart=new Chart(document.getElementById("barChart"),{
-type:"bar",
-data:{labels:["Growth","Competition","Cost","Strategic Fit"],
-datasets:[{label:c1,data:m1},...(m2?[{label:c2,data:m2}]:[])]}
-});
-}
-
-function updatePie(city){
-if(pieChart)pieChart.destroy();
-const ind=cityData[city].industry;
-pieChart=new Chart(document.getElementById("pieChart"),{
-type:"pie",
-data:{labels:Object.keys(ind),datasets:[{data:Object.values(ind)}]}
-});
-}
-
-city1Select.onchange=render;
-city2Select.onchange=render;
-render();
-</script>
-
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Technology & Partners — Expansion Intelligence Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {font-family:"Segoe UI",Arial,sans-serif;margin:0;background:#eef2f7;color:#333;}
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  margin: 0;
+  background: #eef2f7;
+  color: #333;
+}
+
 header {
-  background:linear-gradient(90deg,#1f3a5f,#2c5282);
-  color:white;padding:25px 30px;
+  background: linear-gradient(90deg, #1f3a5f, #2c5282);
+  color: white;
+  padding: 25px 30px;
 }
-h1 {margin:0;font-size:28px;}
-.subtitle {font-size:14px;opacity:0.85;margin-top:5px;}
 
-.container {padding:30px;}
+h1 { margin: 0; font-size: 28px; }
+.subtitle { font-size: 14px; opacity: 0.85; margin-top: 5px; }
 
-.controls {margin-bottom:25px;}
-select, button {padding:8px;margin-right:10px;font-size:14px;}
+.container { padding: 30px; }
 
-.cards {display:flex;gap:20px;flex-wrap:wrap;}
+.controls {
+  margin-bottom: 25px;
+}
+
+select, button {
+  padding: 8px;
+  margin-right: 10px;
+  font-size: 14px;
+}
+
+.cards {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
 .card {
-  background:white;border-radius:14px;padding:20px;
-  flex:1;min-width:340px;
-  box-shadow:0 6px 15px rgba(0,0,0,0.08);
-  transition:0.2s ease;
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  flex: 1;
+  min-width: 340px;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+  transition: 0.2s ease;
 }
-.card:hover {transform:translateY(-5px);}
 
-.metric {margin-bottom:15px;}
-.metric strong {display:block;color:#1f3a5f;}
-.score {font-size:18px;font-weight:bold;}
+.card:hover { transform: translateY(-5px); }
 
-.high {color:#2e7d32;}
-.medium {color:#f9a825;}
-.low {color:#c62828;}
+.metric { margin-bottom: 10px; }
 
-.section-title {margin-top:40px;font-size:18px;font-weight:bold;color:#1f3a5f;}
+.score { font-weight: bold; }
 
-.charts {display:grid;grid-template-columns:1fr 1fr;gap:25px;margin-top:20px;}
-.chart-box {background:white;padding:20px;border-radius:14px;box-shadow:0 6px 15px rgba(0,0,0,0.08);}
-.chart-box.full {grid-column:span 2;}
+.high { color: #2e7d32; }
+.medium { color: #f9a825; }
+.low { color: #c62828; }
 
-.weights {margin-top:20px;background:white;padding:20px;border-radius:14px;box-shadow:0 6px 15px rgba(0,0,0,0.08);}
-.slider-group {margin-bottom:10px;}
+.section-title {
+  margin-top: 40px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #1f3a5f;
+}
 
-footer {text-align:center;padding:15px;font-size:12px;color:#666;margin-top:30px;}
+.charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+  margin-top: 20px;
+}
+
+.chart-box {
+  background: white;
+  padding: 20px;
+  border-radius: 14px;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+}
+
+.chart-box.full { grid-column: span 2; }
+
+.weights {
+  margin-top: 20px;
+  background: white;
+  padding: 20px;
+  border-radius: 14px;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+}
+
+footer {
+  text-align: center;
+  padding: 15px;
+  font-size: 12px;
+  color: #666;
+  margin-top: 30px;
+}
 </style>
 </head>
 <body>
 
 <header>
 <h1>Technology & Partners — Market Expansion Dashboard</h1>
-<div class="subtitle">Data-Driven Market Prioritization Model | Weighted Multi-Factor Expansion Analysis</div>
+<div class="subtitle">Weighted Multi-Factor Expansion Strategy Model</div>
 </header>
 
 <div class="container">
 
 <div class="controls">
-<label>Select City 1:</label>
+<label>City 1:</label>
 <select id="city1"></select>
 
-<label>Select City 2:</label>
+<label>City 2:</label>
 <select id="city2">
 <option value="">Select comparison city</option>
 </select>
@@ -219,11 +130,11 @@ footer {text-align:center;padding:15px;font-size:12px;color:#666;margin-top:30px
 </div>
 
 <div class="weights">
-<h3>Weight Customization</h3>
-<div class="slider-group">Growth <input type="range" min="0" max="1" step="0.05" id="wGrowth" value="0.35"></div>
-<div class="slider-group">Competitive Pressure <input type="range" min="0" max="1" step="0.05" id="wComp" value="0.20"></div>
-<div class="slider-group">Cost Advantage <input type="range" min="0" max="1" step="0.05" id="wCost" value="0.20"></div>
-<div class="slider-group">Strategic Fit <input type="range" min="0" max="1" step="0.05" id="wFit" value="0.25"></div>
+<h3>Adjust Weighting</h3>
+Growth <input type="range" min="0" max="1" step="0.05" id="wGrowth" value="0.35"><br>
+Competitive Pressure <input type="range" min="0" max="1" step="0.05" id="wComp" value="0.20"><br>
+Cost Advantage <input type="range" min="0" max="1" step="0.05" id="wCost" value="0.20"><br>
+Strategic Fit <input type="range" min="0" max="1" step="0.05" id="wFit" value="0.25">
 </div>
 
 <div class="cards">
@@ -231,18 +142,15 @@ footer {text-align:center;padding:15px;font-size:12px;color:#666;margin-top:30px
 <div class="card" id="card2"></div>
 </div>
 
-<div class="section-title">Comparative Performance Analysis</div>
+<div class="section-title">Comparative Analysis</div>
 
 <div class="charts">
 <div class="chart-box"><canvas id="radarChart"></canvas></div>
 <div class="chart-box"><canvas id="barChart"></canvas></div>
-<div class="chart-box full">
-<div class="section-title">Industry Composition (Primary City)</div>
-<canvas id="pieChart"></canvas>
-</div>
+<div class="chart-box full"><canvas id="pieChart"></canvas></div>
 </div>
 
-<div class="section-title">Market Ranking</div>
+<div class="section-title">Top Market Ranking</div>
 <div id="ranking"></div>
 
 <div class="section-title">Executive Summary</div>
@@ -253,116 +161,108 @@ footer {text-align:center;padding:15px;font-size:12px;color:#666;margin-top:30px
 <footer>Internal Strategy Tool — Technology & Partners</footer>
 
 <script>
+
 const targetIndustries = ["Healthcare","Finance","Tech","Banking"];
 
 const cityData = {
 "St. Louis": {growth:3,competition:3,cost:5,fit:5,industry:{Healthcare:30,Manufacturing:20,Finance:20,Government:15,Tech:15}},
 "Nashville": {growth:5,competition:3,cost:3,fit:4,industry:{Healthcare:35,Tech:20,Entertainment:15,Finance:15,Other:15}},
 "Kansas City": {growth:4,competition:3,cost:4,fit:4,industry:{Logistics:25,Finance:25,Manufacturing:20,Tech:15,Other:15}},
-"Tulsa": {growth:3,competition:2,cost:5,fit:3,industry:{Energy:30,Manufacturing:25,Tech:15,Healthcare:15,Other:15}},
 "Austin": {growth:5,competition:5,cost:2,fit:4,industry:{Tech:45,Startups:20,Finance:15,Government:10,Other:10}},
-"Cincinnati": {growth:3,competition:3,cost:4,fit:4,industry:{ConsumerGoods:35,Finance:20,Healthcare:20,Manufacturing:15,Other:10}},
-"Boston": {growth:4,competition:5,cost:1,fit:3,industry:{Biotech:35,Education:25,Tech:20,Finance:15,Other:5}},
-"Phoenix": {growth:5,competition:3,cost:3,fit:4,industry:{Manufacturing:30,Tech:25,RealEstate:20,Healthcare:15,Other:10}},
 "Dallas": {growth:5,competition:4,cost:3,fit:5,industry:{Finance:30,Tech:25,Energy:20,Logistics:15,Other:10}},
-"Charlotte": {growth:4,competition:3,cost:3,fit:4,industry:{Banking:40,Tech:20,Healthcare:15,Manufacturing:15,Other:10}},
 "Atlanta": {growth:5,competition:4,cost:3,fit:5,industry:{Logistics:25,Media:20,Finance:20,Tech:20,Other:15}}
 };
 
-const city1=document.getElementById("city1");
-const city2=document.getElementById("city2");
+const city1 = document.getElementById("city1");
+const city2 = document.getElementById("city2");
 
 Object.keys(cityData).forEach(c=>{
-city1.add(new Option(c,c));
-city2.add(new Option(c,c));
+  city1.add(new Option(c,c));
+  city2.add(new Option(c,c));
 });
+
 city1.value="St. Louis";
 
 function scoreClass(v){
-if(v>=4)return"high";
-if(v==3)return"medium";
-return"low";
+  if(v>=4) return "high";
+  if(v==3) return "medium";
+  return "low";
 }
 
 function getWeights(){
-return{
-g:parseFloat(wGrowth.value),
-c:parseFloat(wComp.value),
-co:parseFloat(wCost.value),
-f:parseFloat(wFit.value)
-};
+  return {
+    g: parseFloat(wGrowth.value),
+    c: parseFloat(wComp.value),
+    co: parseFloat(wCost.value),
+    f: parseFloat(wFit.value)
+  };
 }
 
 function calculateScore(city){
-const d=cityData[city];
-const w=getWeights();
-const compInverted = 6 - d.competition;
-return (
-d.growth*w.g +
-compInverted*w.c +
-d.cost*w.co +
-d.fit*w.f
-).toFixed(2);
-}
-
-function industryAlignment(city){
-let total=0;
-for(const key in cityData[city].industry){
-if(targetIndustries.includes(key)) total+=cityData[city].industry[key];
-}
-return total;
+  const d = cityData[city];
+  const w = getWeights();
+  const compInv = 6 - d.competition;
+  return (
+    d.growth*w.g +
+    compInv*w.c +
+    d.cost*w.co +
+    d.fit*w.f
+  ).toFixed(2);
 }
 
 function renderCard(city,id){
-if(!city){document.getElementById(id).innerHTML="";return;}
-const d=cityData[city];
-document.getElementById(id).innerHTML=`
-<h2>${city}</h2>
-<div><strong>Expansion Readiness Score:</strong> ${calculateScore(city)} / 5</div>
-<div><strong>Industry Alignment:</strong> ${industryAlignment(city)}%</div>
-<div class="metric"><strong>Growth</strong><span class="score ${scoreClass(d.growth)}">${d.growth}/5</span></div>
-<div class="metric"><strong>Competitive Pressure</strong><span class="score ${scoreClass(6-d.competition)}">${6-d.competition}/5</span></div>
-<div class="metric"><strong>Cost Advantage</strong><span class="score ${scoreClass(d.cost)}">${d.cost}/5</span></div>
-<div class="metric"><strong>Strategic Fit</strong><span class="score ${scoreClass(d.fit)}">${d.fit}/5</span></div>
-`;
+  if(!city){
+    document.getElementById(id).innerHTML="";
+    return;
+  }
+  const d=cityData[city];
+  document.getElementById(id).innerHTML=`
+  <h2>${city}</h2>
+  <strong>Expansion Score:</strong> ${calculateScore(city)} / 5<br><br>
+  Growth: <span class="score ${scoreClass(d.growth)}">${d.growth}/5</span><br>
+  Competitive Pressure: <span class="score ${scoreClass(6-d.competition)}">${6-d.competition}/5</span><br>
+  Cost Advantage: <span class="score ${scoreClass(d.cost)}">${d.cost}/5</span><br>
+  Strategic Fit: <span class="score ${scoreClass(d.fit)}">${d.fit}/5</span>
+  `;
 }
 
 function rankCities(){
-let arr=[];
-for(const city in cityData){
-arr.push({city,score:parseFloat(calculateScore(city))});
-}
-arr.sort((a,b)=>b.score-a.score);
-ranking.innerHTML=`
-🥇 ${arr[0].city} (${arr[0].score})<br>
-🥈 ${arr[1].city} (${arr[1].score})<br>
-🥉 ${arr[2].city} (${arr[2].score})
-`;
+  let arr=[];
+  for(const city in cityData){
+    arr.push({city,score:parseFloat(calculateScore(city))});
+  }
+  arr.sort((a,b)=>b.score-a.score);
+  ranking.innerHTML=`
+  🥇 ${arr[0].city} (${arr[0].score})<br>
+  🥈 ${arr[1].city} (${arr[1].score})<br>
+  🥉 ${arr[2].city} (${arr[2].score})
+  `;
 }
 
 function generateSummary(city){
-summary.innerHTML=`${city} presents strong expansion potential driven by growth and strategic alignment. Competitive pressure and cost structure should be monitored as part of phased market entry planning.`;
+  summary.innerHTML = `${city} demonstrates strong expansion potential based on weighted growth, cost efficiency, and strategic alignment metrics.`;
 }
 
 function render(){
-renderCard(city1.value,"card1");
-renderCard(city2.value,"card2");
-rankCities();
-generateSummary(city1.value);
+  renderCard(city1.value,"card1");
+  renderCard(city2.value,"card2");
+  rankCities();
+  generateSummary(city1.value);
 }
 
-city1.onchange=render;
-city2.onchange=render;
 scenario.onchange=function(){
-if(this.value=="conservative"){wGrowth.value=0.2;wCost.value=0.4;}
-if(this.value=="aggressive"){wGrowth.value=0.5;wCost.value=0.15;}
-if(this.value=="balanced"){wGrowth.value=0.35;wCost.value=0.2;}
-render();
+  if(this.value=="conservative"){ wGrowth.value=0.2; wCost.value=0.4; }
+  if(this.value=="aggressive"){ wGrowth.value=0.5; wCost.value=0.15; }
+  if(this.value=="balanced"){ wGrowth.value=0.35; wCost.value=0.2; }
+  render();
 };
 
 document.querySelectorAll("input").forEach(i=>i.oninput=render);
+city1.onchange=render;
+city2.onchange=render;
 
 render();
+
 </script>
 
 </body>
